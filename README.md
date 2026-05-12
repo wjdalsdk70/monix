@@ -19,6 +19,10 @@ Monix is a terminal-native, **read-only** AI assistant for server monitoring. It
 ### Install
 
 ```bash
+curl -Ls https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env or export PATH="$HOME/.local/bin:$PATH"
+uv --version
+
 uv venv
 uv pip install -e ".[dev]"
 ```
