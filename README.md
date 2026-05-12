@@ -31,6 +31,9 @@ uv pip install -e ".[dev]"
 
 ```bash
 uv run monix
+
+uv tool install --editable .
+monix
 ```
 
 On first launch, Monix prompts for a Gemini API key (paste-friendly, hidden input). Skip with Enter to run in local-only mode.
