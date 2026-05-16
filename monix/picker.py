@@ -20,6 +20,7 @@ COMMANDS: list[tuple[str, str]] = [
     ("/service",        "Service status  <name>"),
     ("/docker",         "Docker  ps·stats·top·inspect·logs"),
     ("/log",            "Log management  add·list·@alias·--live"),
+    ("/notify",         "Webhook alerts  test·status"),
     ("/clear",          "Clear history"),
     ("/help",           "Help"),
     ("/exit",           "Exit"),
@@ -55,6 +56,12 @@ SUBCOMMANDS: dict[str, list[tuple[str, str]]] = {
         ("remove",   "@alias  Unregister alias"),
         ("help",     "Show /docker usage details"),
     ],
+    "/notify": [
+        ("test discord",  "Send a test alert to Discord"),
+        ("test slack",    "Send a test alert to Slack"),
+        ("status",        "Show webhook config and last sent times"),
+        ("help",          "Show /notify usage details"),
+    ],
     "/top": [
         ("cpu",     "[N]  Top N by CPU usage"),
         ("memory",  "[N]  Top N by memory usage"),
@@ -86,12 +93,14 @@ SUBCOMMANDS: dict[str, list[tuple[str, str]]] = {
 
 NO_ARG_COMMANDS = {
     "/stat", "/watch", "/cpu", "/collect", "/service", "/top",
-    "/clear", "/help", "/exit",
+    "/clear", "/help", "/exit", "/notify",
     # subcommands that take no further args — Enter immediately submits.
     "/log list", "/log help",
     "/stat help", "/watch help",
     "/top help", "/collect list", "/collect help",
     "/docker ps", "/docker list", "/docker stats", "/docker help",
+    "/notify status", "/notify help",
+    "/notify test discord", "/notify test slack",
 }
 
 # Fixed height = max(top-level, longest subcommand list) so subcommand views

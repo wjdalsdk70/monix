@@ -46,6 +46,12 @@ class Settings:
     log_file: str
     thresholds: Thresholds
     platform: str  # "linux" | "darwin" — can be overridden by MONIX_PLATFORM
+    discord_webhook: str | None
+    slack_webhook: str | None
+    notify_cooldown: int  # seconds
+    notify_cpu: bool
+    notify_mem: bool
+    notify_disk: bool
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -57,6 +63,12 @@ class Settings:
             log_file=default_log_file(),
             thresholds=Thresholds.from_env(),
             platform=_resolve_platform(os.getenv("MONIX_PLATFORM", _platform.system())),
+            discord_webhook=os.getenv("MONIX_DISCORD_WEBHOOK") or None,
+            slack_webhook=os.getenv("MONIX_SLACK_WEBHOOK") or None,
+            notify_cooldown=int(_env_float("MONIX_NOTIFY_COOLDOWN", 3600.0)),
+            notify_cpu=_env_bool("MONIX_NOTIFY_CPU"),
+            notify_mem=_env_bool("MONIX_NOTIFY_MEM"),
+            notify_disk=_env_bool("MONIX_NOTIFY_DISK"),
         )
 
     @property
@@ -87,3 +99,10 @@ def _env_float(name: str, default: float) -> float:
         return float(raw)
     except ValueError:
         return default
+
+
+def _env_bool(name: str, default: bool = True) -> bool:
+    raw = os.getenv(name)
+    if not raw:
+        return default
+    return raw.strip().lower() not in ("0", "false", "no")
