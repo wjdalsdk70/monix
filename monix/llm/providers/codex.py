@@ -20,7 +20,7 @@ from monix.llm.types import (
 )
 
 
-DEFAULT_CODEX_MODEL = "codex-mini-latest"
+DEFAULT_CODEX_MODEL = "gpt-5.5"
 CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
 DEFAULT_CODEX_AUTH_PATH = Path.home() / ".codex" / "auth.json"
 _HTTP_TIMEOUT = 60
@@ -76,6 +76,8 @@ class CodexClient:
             "model": self.model,
             "instructions": SYSTEM_PROMPT,
             "input": _history_to_responses_input(history),
+            "store": False,
+            "stream": True,
         }
         response_tools = [_to_response_tool(tool) for tool in tools]
         if response_tools:
@@ -89,7 +91,7 @@ class CodexClient:
     def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
         assert self._auth is not None
         headers = {
-            "accept": "application/json",
+            "accept": "text/event-stream",
             "authorization": f"Bearer {self._auth.access_token}",
             "content-type": "application/json",
             "originator": "codex_cli_rs",
@@ -118,13 +120,7 @@ class CodexClient:
         except (OSError, TimeoutError) as exc:
             raise NetworkError(f"network error: {exc}") from exc
 
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise ResponseError(
-                "failed to parse Codex response",
-                body_excerpt=raw[:200],
-            ) from exc
+        data = _parse_response(raw)
         if not isinstance(data, dict):
             raise ResponseError("Codex response is not an object")
         return data
@@ -147,6 +143,49 @@ def load_codex_auth(path: Path = DEFAULT_CODEX_AUTH_PATH) -> Optional[CodexAuth]
     return CodexAuth(
         access_token=access_token.strip(),
         account_id=account_id.strip() if isinstance(account_id, str) and account_id.strip() else None,
+    )
+
+
+def _parse_response(raw: str) -> dict[str, Any]:
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return _parse_stream_response(raw)
+    if not isinstance(data, dict):
+        raise ResponseError("Codex response is not an object")
+    return data
+
+
+def _parse_stream_response(raw: str) -> dict[str, Any]:
+    completed: dict[str, Any] | None = None
+    failed: dict[str, Any] | None = None
+    for line in raw.splitlines():
+        if not line.startswith("data:"):
+            continue
+        event_data = line.removeprefix("data:").strip()
+        if not event_data or event_data == "[DONE]":
+            continue
+        try:
+            event = json.loads(event_data)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        response = event.get("response")
+        if event.get("type") == "response.completed" and isinstance(response, dict):
+            completed = response
+        elif event.get("type") in ("response.failed", "error") and isinstance(event, dict):
+            failed = event
+    if completed is not None:
+        return completed
+    if failed is not None:
+        raise ResponseError(
+            "Codex stream failed",
+            body_excerpt=json.dumps(failed)[:200],
+        )
+    raise ResponseError(
+        "failed to parse Codex stream response",
+        body_excerpt=raw[:200],
     )
 
 

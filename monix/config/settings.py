@@ -29,8 +29,9 @@ SUPPORTED_LLM_PROVIDERS = frozenset({GEMINI_PROVIDER, OPENAI_CODEX_PROVIDER})
 
 _DEFAULT_MODELS = {
     GEMINI_PROVIDER: "gemini-2.5-flash",
-    OPENAI_CODEX_PROVIDER: "codex-mini-latest",
+    OPENAI_CODEX_PROVIDER: "gpt-5.5",
 }
+_LEGACY_CODEX_DEFAULT_MODEL = "codex-mini-latest"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -126,12 +127,12 @@ def _resolve_llm_provider(
 
 
 def _resolve_model(provider: str | None, saved_model: str | None) -> str:
-    return (
-        os.getenv("MONIX_LLM_MODEL")
-        or os.getenv("MONIX_MODEL")
-        or saved_model
-        or default_model(provider)
-    )
+    env_model = os.getenv("MONIX_LLM_MODEL") or os.getenv("MONIX_MODEL")
+    if env_model:
+        return env_model
+    if provider == OPENAI_CODEX_PROVIDER and saved_model == _LEGACY_CODEX_DEFAULT_MODEL:
+        return default_model(provider)
+    return saved_model or default_model(provider)
 
 
 def _resolve_platform(value: str) -> str:

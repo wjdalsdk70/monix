@@ -59,6 +59,12 @@ def test_llm_model_env_wins_over_legacy_model_env_and_saved_model(config_file, m
     assert Settings.from_env().model == "provider-model"
 
 
+def test_codex_saved_legacy_default_moves_to_oauth_default(config_file):
+    keystore._save({"llm_provider": "openai-codex", "model": "codex-mini-latest"})
+
+    assert Settings.from_env().model == "gpt-5.5"
+
+
 def test_provider_picker_offers_initial_providers(config_file, monkeypatch):
     seen = {}
 
@@ -120,10 +126,10 @@ def test_codex_setup_stores_provider_without_copying_auth(config_file, tmp_path,
     saved = config_file.read_text(encoding="utf-8")
     output = capsys.readouterr().out
     assert settings.llm_provider == "openai-codex"
-    assert settings.model == "codex-mini-latest"
+    assert settings.model == "gpt-5.5"
     assert json.loads(saved) == {
         "llm_provider": "openai-codex",
-        "model": "codex-mini-latest",
+        "model": "gpt-5.5",
     }
     assert "codex-access-secret" not in saved
     assert "codex-access-secret" not in output

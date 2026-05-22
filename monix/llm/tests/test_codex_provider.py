@@ -9,6 +9,7 @@ from monix.llm.providers.codex import (
     CODEX_RESPONSES_URL,
     CodexClient,
     _history_to_responses_input,
+    _parse_response,
     load_codex_auth,
 )
 from monix.llm.providers.factory import create_client
@@ -104,12 +105,26 @@ def test_codex_client_adapts_responses_request_and_output(tmp_path):
 
     assert captured["url"] == CODEX_RESPONSES_URL
     assert captured["body"]["model"] == "gpt-test"
+    assert captured["body"]["store"] is False
+    assert captured["body"]["stream"] is True
     assert captured["body"]["input"][0]["content"] == "health"
     assert captured["body"]["tools"][0]["type"] == "function"
     assert captured["headers"]["Originator"] == "codex_cli_rs"
     assert captured["headers"]["Chatgpt-account-id"] == "acct-test"
     assert candidate["parts"][0]["text"] == "ready"
     assert usage["total_token_count"] == 6
+
+
+def test_codex_stream_response_uses_completed_response():
+    raw = "\n".join(
+        [
+            'data: {"type":"response.created","response":{"id":"resp-1"}}',
+            'data: {"type":"response.completed","response":{"output_text":"ready"}}',
+            "data: [DONE]",
+        ]
+    )
+
+    assert _parse_response(raw) == {"output_text": "ready"}
 
 
 def test_codex_candidate_preserves_function_call_id(tmp_path):
